@@ -120,6 +120,11 @@ select data_to_int(data) as key, ctid
 from bt_page_items('person_pkey', 1);
 
 
+select *
+FROM person
+WHERE ctid = '(0,1)';
+
+
 -- generate a lot of data for the index
 INSERT INTO person(name)
 SELECT md5(random()::text)
@@ -132,7 +137,7 @@ FROM person;
 -- Task - find id = 500000 in the btree
 
 -- Read root page number from the metapage
-SELECT root
+SELECT *
 FROM bt_metap('person_pkey');
 
 
@@ -145,17 +150,17 @@ from bt_page_items('person_pkey', 412);
 select data_to_int(data) as key,
        ctid,
        dead
-from bt_page_items('person_pkey', 984);
+from bt_page_items('person_pkey', 1270);
 
 
 select data_to_int(data) as key,
        ctid,
        dead
-from bt_page_items('person_pkey', 1098);
+from bt_page_items('person_pkey', 1373);
 
 SELECT *
 FROM person
-WHERE ctid = '(3333,40)';
+WHERE ctid = '(4166,80)';
 
 --- HOT ---
 
@@ -164,12 +169,25 @@ UPDATE person
 SET name = 'Kelly Kapoor';
 -- benchmark
 
+
+-- notice what happens in the index
+select data_to_int(data) as key,
+       ctid,
+       dead
+from bt_page_items('person_pkey', 1373);
+
+SELECT *
+FROM person
+WHERE ctid = '(473,132)';
+
+-- index grows 2x, reads slow down (double pointers)
+
 DROP TABLE IF EXISTS person_v2;
 CREATE TABLE person_v2
 (
     id   serial primary key,
     name varchar(255) NOT NULL
-) WITH (fillfactor=40);
+) WITH (fillfactor = 40);
 
 INSERT INTO person_v2(name)
 SELECT md5(random()::text)
@@ -185,6 +203,9 @@ select data_to_int(data) as key,
        ctid,
        dead
 from bt_page_items('person_v2_pkey', 1098);
+
+SELECT *
+FROM get_raw_page('person_v2', 8503);
 
 SELECT *
 FROM heap_page_items(get_raw_page('person_v2', 8503));
